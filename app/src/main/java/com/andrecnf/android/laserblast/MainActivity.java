@@ -5,68 +5,67 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Build;
-import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.common.api.ResolvableApiException;
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.LocationSettingsRequest;
-import com.google.android.gms.location.LocationSettingsResponse;
-import com.google.android.gms.location.SettingsClient;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
-
 public class MainActivity extends AppCompatActivity {
-    private FusedLocationProviderClient mFusedLocationClient; // Location object that gives the GPS data
-    private static final int REQUEST_GPS = 42; // Constante to ask for location permission
-    private boolean mRequestingLocationUpdates = false; // Flag to handle location updates permission
-    private TextView TestText;
-    private LocationRequest mLocationRequest;
-    private LocationCallback mLocationCallback;
+    private static final int REQUEST_GPS = 42; // Constant to ask for location permission
+    private TextView CorText;
+    private TextView OriText;
     private Location mCurrentLocation;
-    private BroadcastReceiver broadcastReceiver;
-    private float[] currentCoordinates;
+    private float [] mCurrentOrientation;
+    private BroadcastReceiver broadcastReceiverGPS;
+    private BroadcastReceiver broadcastReceiverSensor;
     private Context context;
 
     @Override
     protected void onResume() {
         super.onResume();
-        if(broadcastReceiver == null){
-            broadcastReceiver = new BroadcastReceiver() {
+
+        // Register GPS broadcast receiver and define behaviour when receiving data
+        if(broadcastReceiverGPS == null){
+            broadcastReceiverGPS = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
-//                    mCurrentLocation = (Location) intent.getExtras().get("location");
-//                    currentCoordinates = intent.getExtras().getFloatArray("coordinates");
-//                    TestText.setText("Latitude: " + currentCoordinates[0] + "\nLongitude: " +currentCoordinates[1]);
-//                    Toast.makeText(context, "It's working! :)", Toast.LENGTH_LONG).show();
-//                    TestText.setText("Latitude: " + mCurrentLocation.getLatitude() + "\nLongitude: " + mCurrentLocation.getLongitude());
-//                    TestText.setText("\n" + intent.getExtras().get("coordinates"));
-                    TestText.append("\n" +intent.getExtras().get("coordinates"));
+                    mCurrentLocation = (Location) intent.getExtras().get("location");
+                    CorText.setText("Latitude: " + mCurrentLocation.getLatitude() +
+                                    "\nLongitude: " + mCurrentLocation.getLongitude());
                 }
             };
         }
-        registerReceiver(broadcastReceiver,new IntentFilter("location_update"));
+        registerReceiver(broadcastReceiverGPS, new IntentFilter("location_update"));
+
+        // Register sensor broadcast receiver and define behaviour when receiving data
+        if(broadcastReceiverSensor == null){
+            broadcastReceiverSensor = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    mCurrentOrientation = (float []) intent.getExtras().get("orientation");
+                    OriText.setText("Azimuth: " + mCurrentOrientation[0] +
+                                    "\nPitch: " + mCurrentOrientation[1] +
+                                    "\nRoll: " + mCurrentOrientation[2]);
+                }
+            };
+        }
+        registerReceiver(broadcastReceiverSensor, new IntentFilter("sensors_update"));
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if(broadcastReceiver != null){
-            unregisterReceiver(broadcastReceiver);
+
+        if(broadcastReceiverGPS != null){
+            unregisterReceiver(broadcastReceiverGPS);
+        }
+
+        if(broadcastReceiverSensor != null){
+            unregisterReceiver(broadcastReceiverSensor);
         }
     }
 
@@ -75,62 +74,20 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        TestText = (TextView) findViewById(R.id.TestText);
+        CorText = findViewById(R.id.CorText);
+        OriText = findViewById(R.id.OriText);
         context = this;
 
         // Check if location permission has already been granted
         if (!runtime_permissions()){
             // Start GPS location service
-            Intent i =new Intent(getApplicationContext(),GPS_Service.class);
+            Intent i = new Intent(getApplicationContext(),GPS_Service.class);
             startService(i);
         }
 
-//        LocationRequest mLocationRequest = createLocationRequest();
-//        LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
-//                .addLocationRequest(mLocationRequest);
-//
-//        SettingsClient client = LocationServices.getSettingsClient(this);
-//
-//        mLocationCallback = new LocationCallback() {
-//            @Override
-//            public void onLocationResult(LocationResult locationResult) {
-//                for (Location location : locationResult.getLocations()) {
-//                    // Update UI with location data
-//                    TestText.setText("Latitude: " + location.getLatitude() + "\nLongitude: " + location.getLongitude()
-//                            + "\nTime: " + location.getTime());
-//                }
-//            };
-//        };
-//
-//        Task<LocationSettingsResponse> task = client.checkLocationSettings(builder.build());
-//
-//        task.addOnSuccessListener(this, new OnSuccessListener<LocationSettingsResponse>() {
-//            @Override
-//            public void onSuccess(LocationSettingsResponse locationSettingsResponse) {
-//                // All location settings are satisfied. The client can initialize
-//                // location requests here.
-//                mRequestingLocationUpdates = true;
-//            }
-//        });
-//
-//        task.addOnFailureListener(this, new OnFailureListener() {
-//            @Override
-//            public void onFailure(@NonNull Exception e) {
-//                if (e instanceof ResolvableApiException) {
-//                    // Location settings are not satisfied, but this can be fixed
-//                    // by showing the user a dialog.
-//                    try {
-//                        // Show the dialog by calling startResolutionForResult(),
-//                        // and check the result in onActivityResult().
-//                        ResolvableApiException resolvable = (ResolvableApiException) e;
-//                        resolvable.startResolutionForResult(MainActivity.this,
-//                                REQUEST_GPS);
-//                    } catch (IntentSender.SendIntentException sendEx) {
-//                        // Ignore the error.
-//                    }
-//                }
-//            }
-//        });
+        // Start sensor data service
+        Intent i2 = new Intent(getApplicationContext(),Sensor_Service.class);
+        startService(i2);
     }
 
     private boolean runtime_permissions() {
@@ -157,27 +114,11 @@ public class MainActivity extends AppCompatActivity {
                           && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
 
                       // Start GPS location service
-                      Intent i =new Intent(getApplicationContext(),GPS_Service.class);
+                      Intent i = new Intent(getApplicationContext(),GPS_Service.class);
                       startService(i);
 
-                      // permission was granted, yay!
-//                      mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-//                      mFusedLocationClient.getLastLocation().addOnSuccessListener(this, new OnSuccessListener<Location>() {
-//                          @Override
-//                          public void onSuccess(Location location) {
-//                              // Got last known location. In some rare situations this can be null.
-//                              if (location != null) {
-//                                  // Logic to handle location object
-//                                  TestText.setText("Latitude: " + location.getLatitude() + "\nLongitude: " + location.getLongitude());
-//                                  mCurrentLocation = location;
-//                              }
-//                          }
-//                      });
-
                   } else {
-
-                      // permission denied, boo! Disable the
-                      // functionality that depends on this permission.
+                      // permission denied, boo!
                       Toast.makeText(this, "Why don't you trust us!? :(", Toast.LENGTH_SHORT).show();
                       runtime_permissions();
                   }
@@ -188,37 +129,4 @@ public class MainActivity extends AppCompatActivity {
               // permissions this app might request.
           }
       }
-
-    // Set location request parameters
-//    protected LocationRequest createLocationRequest() {
-//        LocationRequest mLocationRequest = new LocationRequest();
-//        mLocationRequest.setInterval(1000);
-//        mLocationRequest.setFastestInterval(200);
-//        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-//        return mLocationRequest;
-//    }
-//
-//    @Override
-//    protected void onResume() {
-//        super.onResume();
-//        if (mRequestingLocationUpdates) {
-//            startLocationUpdates();
-//        }
-//    }
-//
-//    private void startLocationUpdates() {
-//        mFusedLocationClient.requestLocationUpdates(mLocationRequest,
-//                mLocationCallback,
-//                null /* Looper */);
-//    }
-//
-//    @Override
-//    protected void onPause() {
-//        super.onPause();
-//        stopLocationUpdates();
-//    }
-//
-//    private void stopLocationUpdates() {
-//        mFusedLocationClient.removeLocationUpdates(mLocationCallback);
-//    }
 }

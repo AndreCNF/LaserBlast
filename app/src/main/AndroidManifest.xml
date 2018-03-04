@@ -21,6 +21,7 @@
         </activity>
 
         <service android:name=".GPS_Service"/>
+        <service android:name=".Sensor_Service"/>
 
     </application>
 
