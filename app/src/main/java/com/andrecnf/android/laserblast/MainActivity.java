@@ -1,16 +1,20 @@
 package com.andrecnf.android.laserblast;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.location.LocationManager;
 import android.os.Build;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -18,11 +22,13 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_GPS = 42; // Constant to ask for location permission
     private TextView CorText;
     private TextView OriText;
+    private Button shootBtn;
     private Location mCurrentLocation;
     private float [] mCurrentOrientation;
     private BroadcastReceiver broadcastReceiverGPS;
     private BroadcastReceiver broadcastReceiverSensor;
     private Context context;
+    private LocationManager locationManager;
 
     @Override
     protected void onResume() {
@@ -35,7 +41,10 @@ public class MainActivity extends AppCompatActivity {
                 public void onReceive(Context context, Intent intent) {
                     mCurrentLocation = (Location) intent.getExtras().get("location");
                     CorText.setText("Latitude: " + mCurrentLocation.getLatitude() +
-                                    "\nLongitude: " + mCurrentLocation.getLongitude());
+                                    "\nLongitude: " + mCurrentLocation.getLongitude() +
+                                    "\nAltitude: " + mCurrentLocation.getAltitude());
+//                    CorText.setText("Latitude: " + mCurrentLocation.getLatitude() +
+//                            "\nLongitude: " + mCurrentLocation.getLongitude());
                 }
             };
         }
@@ -69,6 +78,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @SuppressLint("MissingPermission")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -88,6 +98,21 @@ public class MainActivity extends AppCompatActivity {
         // Start sensor data service
         Intent i2 = new Intent(getApplicationContext(),Sensor_Service.class);
         startService(i2);
+
+        // Get first coordinates based on the last known location
+        locationManager = (LocationManager) getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
+        mCurrentLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        CorText.setText("Latitude: " + mCurrentLocation.getLatitude() +
+                        "\nLongitude: " + mCurrentLocation.getLongitude() +
+                        "\nAltitude: " + mCurrentLocation.getAltitude());
+
+        shootBtn = findViewById(R.id.shootBtn);
+        shootBtn.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                // Code here executes on main thread after user presses button
+                Toast.makeText(MainActivity.this, "Fire in the hole!", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private boolean runtime_permissions() {
