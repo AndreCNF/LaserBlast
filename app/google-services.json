@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "942266437973",
+    "firebase_url": "https://laserblast-47682.firebaseio.com",
+    "project_id": "laserblast-47682",
+    "storage_bucket": "laserblast-47682.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:942266437973:android:6bb1b72a72a9b22e",
+        "android_client_info": {
+          "package_name": "com.andrecnf.android.laserblast"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "942266437973-7oclf6du78q1vri2fs4486o213gd3ukq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.andrecnf.android.laserblast",
+            "certificate_hash": "e0e7b6b238633b44b3623c2f695175c11b8c853a"
+          }
+        },
+        {
+          "client_id": "942266437973-4g1b0man3hnvlv2vo8rf7l6qdkskr9sf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAXwUHiwOzL9IKrs-H-B6SNMPxalbsaPOM"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "942266437973-4g1b0man3hnvlv2vo8rf7l6qdkskr9sf.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
