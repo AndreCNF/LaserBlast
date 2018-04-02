@@ -13,15 +13,25 @@ import android.os.Build;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "MainActivity";
     private static final int REQUEST_GPS = 42; // Constant to ask for location permission
     private TextView CorText;
     private TextView OriText;
@@ -32,6 +42,16 @@ public class MainActivity extends AppCompatActivity {
     private BroadcastReceiver broadcastReceiverSensor;
     private Context context;
     private LocationManager locationManager;
+    private RecyclerView recyclerView;
+    private List<Player> list_players = new ArrayList<>();
+    private ArrayList<String> mShotPlayers = new ArrayList<>();
+    FirebaseDatabase database = FirebaseDatabase.getInstance();
+    final DatabaseReference mPlayersReference = database.getReference("players");
+    private String name = getIntent().getStringExtra("Username");
+    private int id = getIntent().getIntExtra("ID", -1);
+    private Coordinates mCurrentCoordinates3D;
+    private Orientation mCurrentOrientation3D;
+
 
     @Override
     protected void onResume() {
@@ -48,6 +68,15 @@ public class MainActivity extends AppCompatActivity {
                                     "\nAltitude: " + mCurrentLocation.getAltitude());
 //                    CorText.setText("Latitude: " + mCurrentLocation.getLatitude() +
 //                            "\nLongitude: " + mCurrentLocation.getLongitude());
+
+                    mCurrentCoordinates3D.setX(mCurrentLocation.getLatitude());
+                    mCurrentCoordinates3D.setY(mCurrentLocation.getLongitude());
+                    mCurrentCoordinates3D.setZ(mCurrentLocation.getAltitude());
+                    mCurrentOrientation3D.setX(mCurrentOrientation[1]);
+                    mCurrentOrientation3D.setY(mCurrentOrientation[2]);
+                    mCurrentOrientation3D.setZ(mCurrentOrientation[3]);
+                    database.getReference("players/" + name + id + "/coordinates").setValue(mCurrentCoordinates3D);
+                    database.getReference("players/" + name + id + "/orientation").setValue(mCurrentOrientation3D);
                 }
             };
         }
@@ -109,19 +138,77 @@ public class MainActivity extends AppCompatActivity {
                         "\nLongitude: " + mCurrentLocation.getLongitude() +
                         "\nAltitude: " + mCurrentLocation.getAltitude());
 
+        initRecyclerView();
+
         shootBtn = findViewById(R.id.shootBtn);
+//        shootBtn.setOnClickListener(new View.OnClickListener() {
+//            public void onClick(View v) {
+//                // Code here executes on main thread after user presses button
+//                Toast.makeText(MainActivity.this, "Fire in the hole!", Toast.LENGTH_SHORT).show();
+//            }
+//        });
+
         shootBtn.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 // Code here executes on main thread after user presses button
-                Toast.makeText(MainActivity.this, "Fire in the hole!", Toast.LENGTH_SHORT).show();
+
+                // Retrieve all the current player status one single time
+                mPlayersReference.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        Log.d(TAG, "onDataChange: Retrieving players' info...");
+                        if(list_players.size() > 0)
+                            list_players.clear();
+                        for(DataSnapshot postSnapshot:dataSnapshot.getChildren()){
+                            Player player = postSnapshot.getValue(Player.class);
+                            list_players.add(player);
+                            Log.d(TAG, "onDataChange: Adding player " + player.getName() + " to the list...");
+                        }
+
+                        mShotPlayers.clear();
+                        mShotPlayers.add("Shot players:");
+
+                        Log.d(TAG, "onClick: list_players before low score removal: " + list_players);
+                        for(int i = 0; i < list_players.size(); i++){
+                            Log.d(TAG, "onClick: Seeing player " + list_players.get(i).getName() + "'s score...");
+                            if(list_players.get(i).getScore() < 5){
+                                Log.d(TAG, "onClick: Removing low scored player " + list_players.get(i).getName());
+                                list_players.remove(i);
+
+                                // As player i was removed, next player has index i again
+                                i--;
+                            }
+                        }
+
+                        // Put players with the desired score on the list to print on the screen
+                        for(int i = 0; i < list_players.size(); i++){
+                            mShotPlayers.add(list_players.get(i).getName());
+                        }
+
+                        Log.d(TAG, "onClick: mShotPlayers = " + mShotPlayers);
+                        updateRecyclerView();
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+
+                    }
+                });
             }
         });
 
-        // Write a message to the database
-        FirebaseDatabase database = FirebaseDatabase.getInstance();
-        DatabaseReference myRef = database.getReference("message");
+//        createPlayer(123, 6, "Gelson", database);
+//        createPlayer(314, 21, "Dost", database);
+//        createPlayer(165, 2, "Patricio", database);
+//        createPlayer(794, 0, "Wendel", database);
+//        createPlayer(275, 8, "Montero", database);
+    }
 
-        myRef.setValue("Hello, World!");
+    // Create and upload a player to the Firebase Realtime Database
+    private void createPlayer(int id, String name, FirebaseDatabase database) {
+        Player p1 = new Player(id, name);
+        DatabaseReference myRef = database.getReference("players/" + name + id);
+        myRef.setValue(p1);
     }
 
     private boolean runtime_permissions() {
@@ -136,31 +223,45 @@ public class MainActivity extends AppCompatActivity {
         return false;
     }
 
-      // Handle the user's answers to permission requests
-      @Override
-      public void onRequestPermissionsResult(int requestCode,
-                                             String permissions[], int[] grantResults) {
-          switch (requestCode) {
-              case REQUEST_GPS: {
-                  // If request is cancelled, the result arrays are empty.
-                  if (grantResults.length > 0
-                          && grantResults[0] == PackageManager.PERMISSION_GRANTED
-                          && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
+    // Handle the user's answers to permission requests
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case REQUEST_GPS: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED
+                        && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
 
-                      // Start GPS location service
-                      Intent i = new Intent(getApplicationContext(),GPS_Service.class);
-                      startService(i);
+                    // Start GPS location service
+                    Intent i = new Intent(getApplicationContext(),GPS_Service.class);
+                    startService(i);
 
-                  } else {
-                      // permission denied, boo!
-                      Toast.makeText(this, "Why don't you trust us!? :(", Toast.LENGTH_SHORT).show();
-                      runtime_permissions();
-                  }
-                  return;
-              }
+                } else {
+                    // permission denied, boo!
+                    Toast.makeText(this, "Why don't you trust us!? :(", Toast.LENGTH_SHORT).show();
+                    runtime_permissions();
+                }
+                return;
+            }
 
-              // other 'case' lines to check for other
-              // permissions this app might request.
-          }
-      }
+            // other 'case' lines to check for other
+            // permissions this app might request.
+        }
+    }
+
+    private void initRecyclerView(){
+        Log.d(TAG, "initRecyclerView: init recyclerview.");
+        recyclerView = findViewById(R.id.recycler_view);
+        RecyclerViewAdapter adapter = new RecyclerViewAdapter(this, mShotPlayers);
+        recyclerView.setAdapter(adapter);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+    }
+
+    private void updateRecyclerView(){
+        Log.d(TAG, "updateRecyclerView: updating recyclerview.");
+        RecyclerViewAdapter adapter = new RecyclerViewAdapter(this, mShotPlayers);
+        recyclerView.setAdapter(adapter);
+    }
 }
