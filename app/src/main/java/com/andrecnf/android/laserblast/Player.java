@@ -14,8 +14,8 @@ public class Player {
     private String password;
     //String email;
     private boolean isDead;
-    private Coordinates coordinates;
-    private Orientation orientation;
+    private ThreeDCharact coordinates;
+    private ThreeDCharact orientation;
     private Date timestamp;
 
     /* Constructors */
@@ -25,9 +25,9 @@ public class Player {
         password = password_;
         isDead = false;
         score = 0;
-        coordinates = new Coordinates();
+        coordinates = new ThreeDCharact();
         // coordinates.setTimestamp(timestamp_);
-        orientation = new Orientation();
+        orientation = new ThreeDCharact();
     }
 
     public Player(int id_, String name_){
@@ -58,19 +58,19 @@ public class Player {
         return this.isDead;
     }
 
-    public Coordinates getCoordinates() {
+    public ThreeDCharact getCoordinates() {
         return this.coordinates;
     }
 
-    public Orientation getOrientation() {
+    public ThreeDCharact getOrientation() {
         return this.orientation;
     }
 
-    public void setCoordinates(Coordinates coordinate) {
+    public void setCoordinates(ThreeDCharact coordinate) {
         this.coordinates = coordinate;
     }
 
-    public void setOrientation(Orientation orientation) {
+    public void setOrientation(ThreeDCharact orientation) {
         this.orientation = orientation;
     }
 }

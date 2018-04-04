@@ -33,6 +33,7 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final int REQUEST_GPS = 42; // Constant to ask for location permission
+    private static int sensor_upd_flag = 0;
     private TextView CorText;
     private TextView OriText;
     private Button shootBtn;
@@ -47,10 +48,10 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<String> mShotPlayers = new ArrayList<>();
     FirebaseDatabase database = FirebaseDatabase.getInstance();
     final DatabaseReference mPlayersReference = database.getReference("players");
-    private String name = getIntent().getStringExtra("Username");
-    private int id = getIntent().getIntExtra("ID", -1);
-    private Coordinates mCurrentCoordinates3D;
-    private Orientation mCurrentOrientation3D;
+    private String name;
+    private int id;
+    private ThreeDCharact mCurrentCoordinates3D;
+    private ThreeDCharact mCurrentOrientation3D;
 
 
     @Override
@@ -88,9 +89,15 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onReceive(Context context, Intent intent) {
                     mCurrentOrientation = (float []) intent.getExtras().get("orientation");
-                    OriText.setText("Azimuth: " + mCurrentOrientation[0] +
-                                    "\nPitch: " + mCurrentOrientation[1] +
-                                    "\nRoll: " + mCurrentOrientation[2]);
+
+                    if(sensor_upd_flag >= 5000) {
+                        OriText.setText("Azimuth: " + mCurrentOrientation[0] +
+                                "\nPitch: " + mCurrentOrientation[1] +
+                                "\nRoll: " + mCurrentOrientation[2]);
+                        sensor_upd_flag = 0;
+                    }
+
+                    sensor_upd_flag += 1;
                 }
             };
         }
@@ -127,16 +134,26 @@ public class MainActivity extends AppCompatActivity {
             startService(i);
         }
 
+        name = getIntent().getStringExtra("Username");
+        id = getIntent().getIntExtra("ID", -1);
+
+        mCurrentCoordinates3D = new ThreeDCharact();
+        mCurrentOrientation3D = new ThreeDCharact();
+
         // Start sensor data service
         Intent i2 = new Intent(getApplicationContext(),Sensor_Service.class);
         startService(i2);
 
         // Get first coordinates based on the last known location
-        locationManager = (LocationManager) getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
-        mCurrentLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-        CorText.setText("Latitude: " + mCurrentLocation.getLatitude() +
-                        "\nLongitude: " + mCurrentLocation.getLongitude() +
-                        "\nAltitude: " + mCurrentLocation.getAltitude());
+        try{
+            locationManager = (LocationManager) getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
+            mCurrentLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            CorText.setText("Latitude: " + mCurrentLocation.getLatitude() +
+                    "\nLongitude: " + mCurrentLocation.getLongitude() +
+                    "\nAltitude: " + mCurrentLocation.getAltitude());
+        } finally {
+
+        }
 
         initRecyclerView();
 
@@ -264,4 +281,16 @@ public class MainActivity extends AppCompatActivity {
         RecyclerViewAdapter adapter = new RecyclerViewAdapter(this, mShotPlayers);
         recyclerView.setAdapter(adapter);
     }
+
+//    private int calculateDistance(lat1, lon1, lat2, lon2) {
+//        var R = 6371; // km
+//        var dLat = (lat2 - lat1).toRad();
+//        var dLon = (lon2 - lon1).toRad();
+//        var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+//                Math.cos(lat1.toRad()) * Math.cos(lat2.toRad()) *
+//                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+//        var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+//        var d = R * c;
+//        return d;
+//    }
 }

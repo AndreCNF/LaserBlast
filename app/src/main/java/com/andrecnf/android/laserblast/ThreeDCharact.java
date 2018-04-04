@@ -6,7 +6,7 @@ import java.util.Date;
  * Created by AndreCNF on 02/04/2018.
  */
 
-public abstract class ThreeDCharact {
+public class ThreeDCharact {
     protected double x;
     protected double y;
     protected double z;

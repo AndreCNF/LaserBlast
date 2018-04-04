@@ -46,7 +46,8 @@
         android:textColor="#ffffff"
         android:ems="10"
         android:inputType="textPersonName"
-        android:text="" />
+        android:text=""
+        android:textSize="12sp"/>
 
 
 </RelativeLayout>
