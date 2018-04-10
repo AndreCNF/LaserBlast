@@ -10,6 +10,7 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Build;
+import android.os.CountDownTimer;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -25,6 +26,7 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 
 import java.text.DecimalFormat;
@@ -34,7 +36,6 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final int REQUEST_GPS = 42; // Constant to ask for location permission
-    private static int sensor_upd_flag = 0;
     private TextView CorText;
     private TextView OriText;
     private Button shootBtn;
@@ -55,7 +56,16 @@ public class MainActivity extends AppCompatActivity {
     private int id;
     private ThreeDCharact mCurrentCoordinates3D;
     private ThreeDCharact mCurrentOrientation3D;
+    private boolean isDead = false;
+    private Iterable<DataSnapshot> topScoredPlayers;
+    private int topScore = 0;
 
+    // Maximum score that, when reached, ends the game (gameover)
+    private int maxScore = 20;
+
+    // Flags
+    private static int sensor_upd_flag = 0;
+    private boolean was_alive_flag = true;
 
     @Override
     protected void onResume() {
@@ -93,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
                 public void onReceive(Context context, Intent intent) {
                     mCurrentOrientation = (float []) intent.getExtras().get("orientation");
 
-                    if(sensor_upd_flag >= 5000) {
+                    if(sensor_upd_flag >= 50) {
                         OriText.setText("Azimuth: " + mCurrentOrientation[0] +
                                 "\nPitch: " + mCurrentOrientation[1] +
                                 "\nRoll: " + mCurrentOrientation[2]);
@@ -107,6 +117,35 @@ public class MainActivity extends AppCompatActivity {
         registerReceiver(broadcastReceiverSensor, new IntentFilter("sensors_update"));
 
         // TODO See if someone shot the current player (check "dead" boolean on the database)
+
+        if(isDead){
+            // Just died
+            if(was_alive_flag){
+                // Start timer
+                new CountDownTimer(5000, 1000) {
+
+                    public void onTick(long millisUntilFinished) {
+                        // Put respawn time on the screen
+                        mShotPlayers.add(1, String.valueOf(millisUntilFinished));
+                        updateRecyclerView();
+
+                        // Deactivate shooting button
+                        shootBtn.setEnabled(false);
+                    }
+
+                    // End of timer
+                    public void onFinish() {
+                        // Clean screen
+                        mShotPlayers.clear();
+                        updateRecyclerView();
+
+                        // Reactivate shooting button
+                        shootBtn.setEnabled(true);
+                    }
+                }.start();
+            }
+        }
+
         // TODO See if it's gameover (check if there's a high score, like 20, in some player of the database)
     }
 
@@ -142,6 +181,7 @@ public class MainActivity extends AppCompatActivity {
 
         name = getIntent().getStringExtra("Username");
         id = getIntent().getIntExtra("ID", -1);
+        final DatabaseReference mCurPlayerRef = database.getReference("players/" + name + id + "/dead");
 
         mCurrentCoordinates3D = new ThreeDCharact();
         mCurrentOrientation3D = new ThreeDCharact();
@@ -186,8 +226,8 @@ public class MainActivity extends AppCompatActivity {
                         Log.d(TAG, "onDataChange: Retrieving players' info...");
                         if(list_players.size() > 0)
                             list_players.clear();
-                        for(DataSnapshot postSnapshot:dataSnapshot.getChildren()){
-                            Player player = postSnapshot.getValue(Player.class);
+                        for(DataSnapshot playerSnapshot:dataSnapshot.getChildren()){
+                            Player player = playerSnapshot.getValue(Player.class);
                             list_players.add(player);
                             Log.d(TAG, "onDataChange: Adding player " + player.getName() + " to the list...");
                         }
@@ -248,6 +288,53 @@ public class MainActivity extends AppCompatActivity {
 //        createPlayer(165, 2, "Patricio", database);
 //        createPlayer(794, 0, "Wendel", database);
 //        createPlayer(275, 8, "Montero", database);
+
+        // Check if player was killed by someone
+        mCurPlayerRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                isDead = dataSnapshot.getValue(Boolean.class);
+                Log.d(TAG, "onDataChange: Changed dead status to " + isDead);
+                mShotPlayers.clear();
+                mShotPlayers.add("You're dead :(");
+                updateRecyclerView();
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+
+        // Order players by their score
+        Query scoreQuery = mPlayersReference.orderByChild("score");
+
+        // Check for current top score
+        scoreQuery.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                topScoredPlayers = dataSnapshot.getChildren();
+
+                for(DataSnapshot playerSnapshot: dataSnapshot.getChildren()) {
+                   topScore = playerSnapshot.child("score").getValue(Integer.class);
+
+                   // Check for gameover (score reached the maximum value)
+                   if(topScore >= maxScore){
+                       Toast.makeText(context, "GAMEOVER: " +
+                               playerSnapshot.child("name").getValue(String.class) +
+                               " won the game", Toast.LENGTH_LONG).show();
+                   }
+
+                   // Only the top score matters
+                   break;
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                Log.w(TAG, "onCancelled", databaseError.toException());
+            }
+        });
     }
 
     // Create and upload a player to the Firebase Realtime Database

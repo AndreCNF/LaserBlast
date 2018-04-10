@@ -19,13 +19,14 @@
     <TextView
         android:id="@+id/Username"
         android:layout_width="wrap_content"
-        android:layout_height="24dp"
+        android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
         android:layout_below="@+id/imageView"
         android:layout_marginTop="35dp"
-        android:fontFamily="@font/astron-boy"
+        android:fontFamily="@font/astron_boy"
         android:text="LaserBlast"
-        android:textSize="20sp" />
+        android:textSize="40sp"
+        android:textColor="#e7002f"/>
 
     <Button xmlns:android="http://schemas.android.com/apk/res/android"
         android:id="@+id/button_play"
@@ -33,7 +34,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="350dp"
+        android:layout_marginTop="360dp"
         android:text="Let's play" />
 
     <EditText
@@ -42,11 +43,11 @@
         android:layout_height="wrap_content"
         android:layout_below="@+id/imageView"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="75dp"
+        android:layout_marginTop="90dp"
         android:textColor="#ffffff"
         android:ems="10"
         android:inputType="textPersonName"
-        android:text="Username"
+        android:hint="Username"
         android:textSize="12sp"/>
 
 
