@@ -13,5 +13,9 @@
         <item name="windowNoTitle">true</item>
         <item name="android:windowFullscreen">true</item>
     </style>
+    <style name="customfontstyle" parent="@android:style/TextAppearance.Large">
+        <item name="android:fontFamily">@font/astron-boy</item>
+    </style>
+
 
 </resources>

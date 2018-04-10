@@ -23,8 +23,8 @@
         android:layout_centerHorizontal="true"
         android:layout_below="@+id/imageView"
         android:layout_marginTop="35dp"
-        android:text="Username"
-        android:textAppearance="@style/TextAppearance.AppCompat.Display1"
+        android:fontFamily="@font/astron-boy"
+        android:text="LaserBlast"
         android:textSize="20sp" />
 
     <Button xmlns:android="http://schemas.android.com/apk/res/android"
@@ -38,15 +38,15 @@
 
     <EditText
         android:id="@+id/TFusername"
-        android:layout_width="wrap_content"
-        android:layout_height="24dp"
+        android:layout_width="150dp"
+        android:layout_height="wrap_content"
         android:layout_below="@+id/imageView"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="75dp"
         android:textColor="#ffffff"
         android:ems="10"
         android:inputType="textPersonName"
-        android:text=""
+        android:text="Username"
         android:textSize="12sp"/>
 
 

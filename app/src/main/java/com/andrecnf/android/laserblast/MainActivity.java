@@ -27,6 +27,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,6 +40,8 @@ public class MainActivity extends AppCompatActivity {
     private Button shootBtn;
     private Location mCurrentLocation;
     private float [] mCurrentOrientation;
+    private Location tmpmCurrentLocation;
+    private float [] tmpmCurrentOrientation;
     private BroadcastReceiver broadcastReceiverGPS;
     private BroadcastReceiver broadcastReceiverSensor;
     private Context context;
@@ -102,6 +105,9 @@ public class MainActivity extends AppCompatActivity {
             };
         }
         registerReceiver(broadcastReceiverSensor, new IntentFilter("sensors_update"));
+
+        // TODO See if someone shot the current player (check "dead" boolean on the database)
+        // TODO See if it's gameover (check if there's a high score, like 20, in some player of the database)
     }
 
     @Override
@@ -169,6 +175,10 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 // Code here executes on main thread after user presses button
 
+                // Save shooting player's location and orientation at time of shooting
+                tmpmCurrentLocation = mCurrentLocation;
+                tmpmCurrentOrientation = mCurrentOrientation;
+
                 // Retrieve all the current player status one single time
                 mPlayersReference.addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
@@ -185,11 +195,11 @@ public class MainActivity extends AppCompatActivity {
                         mShotPlayers.clear();
                         mShotPlayers.add("Shot players:");
 
-                        Log.d(TAG, "onClick: list_players before low score removal: " + list_players);
+                        Log.d(TAG, "onClick: list_players before dead removal: " + list_players);
                         for(int i = 0; i < list_players.size(); i++){
-                            Log.d(TAG, "onClick: Seeing player " + list_players.get(i).getName() + "'s score...");
-                            if(list_players.get(i).getScore() < 5){
-                                Log.d(TAG, "onClick: Removing low scored player " + list_players.get(i).getName());
+                            Log.d(TAG, "onClick: Seeing if player " + list_players.get(i).getName() + "is dead...");
+                            if(list_players.get(i).isDead()){
+                                Log.d(TAG, "onClick: Removing dead player " + list_players.get(i).getName());
                                 list_players.remove(i);
 
                                 // As player i was removed, next player has index i again
@@ -197,9 +207,28 @@ public class MainActivity extends AppCompatActivity {
                             }
                         }
 
-                        // Put players with the desired score on the list to print on the screen
                         for(int i = 0; i < list_players.size(); i++){
-                            mShotPlayers.add(list_players.get(i).getName());
+                            Log.d(TAG, "onClick: Seeing if player " + list_players.get(i).getName() + "is shot...");
+                            if(isShot(tmpmCurrentOrientation[1],
+                                      tmpmCurrentLocation.getLatitude(),
+                                      tmpmCurrentLocation.getLongitude(),
+                                      list_players.get(i).getCoordinates().x,
+                                      list_players.get(i).getCoordinates().y)){
+                                Log.d(TAG, "onDataChange: Player " + list_players.get(i).getName() + " was shot.");
+
+                                // Kill player
+                                DatabaseReference shotPlayerDead = database.getReference(
+                                        "players/" + list_players.get(i).getName()
+                                                      + list_players.get(i).getId() + "/dead");
+                                shotPlayerDead.setValue("true");
+
+                                // Improve current player's score
+                                DatabaseReference playerScore = database.getReference("players/" + name + id + "/score");
+                                playerScore.setValue(Integer.parseInt(playerScore.getKey()) + 1);
+
+                                // Add to the shot players names list
+                                mShotPlayers.add(list_players.get(i).getName());
+                            }
                         }
 
                         Log.d(TAG, "onClick: mShotPlayers = " + mShotPlayers);
@@ -282,15 +311,148 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setAdapter(adapter);
     }
 
-//    private int calculateDistance(lat1, lon1, lat2, lon2) {
-//        var R = 6371; // km
-//        var dLat = (lat2 - lat1).toRad();
-//        var dLon = (lon2 - lon1).toRad();
-//        var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-//                Math.cos(lat1.toRad()) * Math.cos(lat2.toRad()) *
-//                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-//        var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-//        var d = R * c;
+//    // Complex version to calculate distance
+//    private int calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+//        double R = 6371; // km
+//        double dLat = (lat2 - lat1).toRad();
+//        double dLon = (lon2 - lon1).toRad();
+//        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+//                   Math.cos(lat1.toRad()) * Math.cos(lat2.toRad()) *
+//                   Math.sin(dLon / 2) * Math.sin(dLon / 2);
+//        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+//        double d = R * c;
 //        return d;
 //    }
+
+    // Flat earth approximation to calculate the distance between two points.
+    // 1 is the current player, 2 is the other player.
+    // Reference: http://www.movable-type.co.uk/scripts/latlong.html
+    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+        // Earth's radius
+        final double R = 6371;
+
+        // Latitudes in radian
+        double lat1r = lat1 * Math.PI / 180;
+        double lat2r = lat2 * Math.PI / 180;
+
+        // Longitude in radian
+        double lon1r = lon1 * Math.PI / 180;
+        double lon2r = lon2 * Math.PI / 180;
+
+        // Difference in latitude, in radians
+        double dLat = lat2r - lat1r;
+
+        // Difference in longitude, in radians
+        double dLon = lon2r - lon1r;
+
+        double x = dLon * Math.cos((lat1r + lat2r)/2);
+        double y = dLat;
+        double d = Math.sqrt(x*x + y*y) * R;
+        return d;
+    }
+
+    // Calculate initial bearing (1 is the current player, 2 is the other player)
+    // Reference: http://www.movable-type.co.uk/scripts/latlong.html
+    private double calculateBearing(double lat1, double lon1, double lat2, double lon2) {
+        // Latitudes in radian
+        double lat1r = lat1 * Math.PI / 180;
+        double lat2r = lat2 * Math.PI / 180;
+
+        // Longitude in radian
+        double lon1r = lon1 * Math.PI / 180;
+        double lon2r = lon2 * Math.PI / 180;
+
+        // Difference in longitude, in radians
+        double dLon = lon2r - lon1r;
+
+        double y = Math.sin(dLon) * Math.cos(lat2r);
+        double x = Math.cos(lat1r)*Math.sin(lat2r) - Math.sin(lat1r)*Math.cos(lat2r)*Math.cos(dLon);
+        // double brng = Math.atan2(y, x) * 180 / Math.PI;
+        double brng = Math.atan2(y, x);
+        return brng;
+    }
+
+    // See if a given player is shot by the current player, knowing the coordinates of both players.
+    // 1 is the current player, 2 is the other player
+    private boolean isShot(double azimuth, double lat1, double lon1, double lat2, double lon2) {
+        // Distance between the two players
+        double dist = calculateDistance(lat1, lon1, lat2, lon2);
+
+        // If the distance between the players is bigger than 30 meters, the other player isn't shot
+        if(dist > 30){
+            Log.d(TAG, "isShot: Player too far away");
+            return false;
+        }
+
+        // Rounded coordinates to allow a wider shooting area, compensating GPS and compass
+        // precision errors
+        double lat1rnd = roundFourDecimals(lat1);
+        double lat2rnd = roundFourDecimals(lat2);
+        double lon1rnd = roundFourDecimals(lon1);
+        double lon2rnd = roundFourDecimals(lon2);
+
+        double brng = calculateBearing(lat1rnd, lon1rnd, lat2rnd, lon2rnd);
+
+        // The other player is shot only if it's in the direction of the shooting player's orientation
+        // See if the shooting player's orientation is similar to the bearing calculated
+        if(areAnglesSimilar(azimuth, brng)){
+            return true;
+        }
+        else{
+            return false;
+        }
+    }
+
+    // Round a double number to 4 decimal digits
+    double roundFourDecimals(double d)
+    {
+        DecimalFormat twoDForm = new DecimalFormat("##.####");
+        return Double.valueOf(twoDForm.format(d));
+    }
+
+    private boolean areAnglesSimilar(double azimuth, double brng){
+        // Angle error threshold
+        double ang_thr = Math.PI / 180;
+
+        // Same signal, no discontinuities in the angles
+        if(Math.signum(azimuth) == Math.signum(brng)){
+            if(Math.abs(azimuth - brng) < ang_thr){
+                return true;
+            }
+        }
+        // Different signal, see if the angles are near PI, where a discontinuity resides
+        else if(Math.signum(azimuth) > 0){
+            if(Math.abs(azimuth - Math.PI) < Math.abs(azimuth) ||
+                    Math.abs(brng - (-Math.PI)) < Math.abs(brng)){
+                // Force both angles to have the same sign by inverting the sign of brng
+                if(Math.abs(azimuth - (2 * Math.PI + brng)) < ang_thr){
+                    return true;
+                }
+            }
+            // Different signal but both are close to 0 rads, where there isn't a discontinuity
+            else{
+                if(Math.abs(azimuth - brng) < ang_thr){
+                    return true;
+                }
+            }
+        }
+        else if(Math.signum(azimuth) < 0){
+            if(Math.abs(azimuth - (-Math.PI)) < Math.abs(azimuth) ||
+                    Math.abs(brng - Math.PI) < Math.abs(brng)){
+                // Force both angles to have the same sign by inverting the sign of azimuth
+                if(Math.abs((2 * Math.PI + azimuth) - brng) < ang_thr){
+                    return true;
+                }
+            }
+            // Different signal but both are close to 0 rads, where there isn't a discontinuity
+            else{
+                if(Math.abs(azimuth - brng) < ang_thr){
+                    return true;
+                }
+            }
+        }
+
+        // No angle compatibility found, then the player isn't in shooting range
+        return false;
+    }
 }
