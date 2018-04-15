@@ -24,13 +24,14 @@ public class LoginActivity extends AppCompatActivity {
     private Button button_play;
     private List<Player> list_players = new ArrayList<>();
     private int flag_DupName = 0;
+    final FirebaseDatabase database = FirebaseDatabase.getInstance();
+    final DatabaseReference mPlayersReference = database.getReference("players");
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        final FirebaseDatabase database = FirebaseDatabase.getInstance();
-        final DatabaseReference mPlayersReference = database.getReference("players");
         Random rand = new Random();
         final int id = rand.nextInt(100) + 1;
 

@@ -46,7 +46,9 @@
         app:layout_constraintLeft_toRightOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintBottom_toTopOf="@+id/shootBtn"
-        app:layout_constraintVertical_bias="0.70" >
+        app:layout_constraintVertical_bias="0.70"
+        android:background="#507CFC00"
+        android:visibility="invisible">
 
     </android.support.v7.widget.RecyclerView>
 
@@ -56,11 +58,11 @@
         android:layout_height="wrap_content"
         android:padding="30dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toRightOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.80"
-        app:layout_constraintTop_toBottomOf="@id/TextsContainer"
-        android:background = "@drawable/rounded_button" />
+        app:layout_constraintTop_toBottomOf="parent"
+        android:layout_marginRight="30dp"
+        android:background = "@drawable/shooting_button"
+        android:enabled="true" />
 
 </android.support.constraint.ConstraintLayout>

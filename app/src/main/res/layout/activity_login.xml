@@ -50,5 +50,4 @@
         android:hint="Username"
         android:textSize="12sp"/>
 
-
 </RelativeLayout>

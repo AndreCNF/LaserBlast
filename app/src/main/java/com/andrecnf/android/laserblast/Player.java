@@ -58,6 +58,10 @@ public class Player {
         return this.isDead;
     }
 
+    public void setDead(boolean dead){
+        isDead = dead;
+    }
+
     public ThreeDCharact getCoordinates() {
         return this.coordinates;
     }

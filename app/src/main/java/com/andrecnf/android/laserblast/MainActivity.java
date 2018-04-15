@@ -7,6 +7,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Camera;
+import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Build;
@@ -36,6 +38,7 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final int REQUEST_GPS = 42; // Constant to ask for location permission
+    private static final int REQUEST_CAMERA = 13; // Constant to ask for camera permission
     private TextView CorText;
     private TextView OriText;
     private Button shootBtn;
@@ -50,22 +53,29 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private List<Player> list_players = new ArrayList<>();
     private ArrayList<String> mShotPlayers = new ArrayList<>();
-    FirebaseDatabase database = FirebaseDatabase.getInstance();
-    final DatabaseReference mPlayersReference = database.getReference("players");
+    private final FirebaseDatabase database = FirebaseDatabase.getInstance();
+    private final DatabaseReference mPlayersReference = database.getReference("players");
+    private DatabaseReference mCurPlayerRef;
+    private Query scoreQuery;
     private String name;
     private int id;
     private ThreeDCharact mCurrentCoordinates3D;
     private ThreeDCharact mCurrentOrientation3D;
     private boolean isDead = false;
     private Iterable<DataSnapshot> topScoredPlayers;
-    private int topScore = 0;
+    public static int topScore = 0;
 
     // Maximum score that, when reached, ends the game (gameover)
-    private int maxScore = 20;
+    public static int maxScore = 20;
 
     // Flags
     private static int sensor_upd_flag = 0;
     private boolean was_alive_flag = true;
+
+    // Listeners
+    ValueEventListener deathListener;
+    ValueEventListener shootListener;
+    ValueEventListener scoreListener;
 
     @Override
     protected void onResume() {
@@ -76,21 +86,23 @@ public class MainActivity extends AppCompatActivity {
             broadcastReceiverGPS = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
-                    mCurrentLocation = (Location) intent.getExtras().get("location");
-                    CorText.setText("Latitude: " + mCurrentLocation.getLatitude() +
-                                    "\nLongitude: " + mCurrentLocation.getLongitude() +
-                                    "\nAltitude: " + mCurrentLocation.getAltitude());
-//                    CorText.setText("Latitude: " + mCurrentLocation.getLatitude() +
-//                            "\nLongitude: " + mCurrentLocation.getLongitude());
+                    try{
+                        mCurrentLocation = (Location) intent.getExtras().get("location");
+                        CorText.setText("Latitude: " + mCurrentLocation.getLatitude() +
+                                "\nLongitude: " + mCurrentLocation.getLongitude() +
+                                "\nAltitude: " + mCurrentLocation.getAltitude());
 
-                    mCurrentCoordinates3D.setX(mCurrentLocation.getLatitude());
-                    mCurrentCoordinates3D.setY(mCurrentLocation.getLongitude());
-                    mCurrentCoordinates3D.setZ(mCurrentLocation.getAltitude());
-                    mCurrentOrientation3D.setX(mCurrentOrientation[1]);
-                    mCurrentOrientation3D.setY(mCurrentOrientation[2]);
-                    mCurrentOrientation3D.setZ(mCurrentOrientation[3]);
-                    database.getReference("players/" + name + id + "/coordinates").setValue(mCurrentCoordinates3D);
-                    database.getReference("players/" + name + id + "/orientation").setValue(mCurrentOrientation3D);
+                        mCurrentCoordinates3D.setX(mCurrentLocation.getLatitude());
+                        mCurrentCoordinates3D.setY(mCurrentLocation.getLongitude());
+                        mCurrentCoordinates3D.setZ(mCurrentLocation.getAltitude());
+                        mCurrentOrientation3D.setX(mCurrentOrientation[0]);
+                        mCurrentOrientation3D.setY(mCurrentOrientation[1]);
+                        mCurrentOrientation3D.setZ(mCurrentOrientation[2]);
+                        database.getReference("players/" + name + id + "/coordinates").setValue(mCurrentCoordinates3D);
+                        database.getReference("players/" + name + id + "/orientation").setValue(mCurrentOrientation3D);
+                    } finally{
+
+                    }
                 }
             };
         }
@@ -115,36 +127,6 @@ public class MainActivity extends AppCompatActivity {
             };
         }
         registerReceiver(broadcastReceiverSensor, new IntentFilter("sensors_update"));
-
-        // TODO See if someone shot the current player (check "dead" boolean on the database)
-
-        if(isDead){
-            // Just died
-            if(was_alive_flag){
-                // Start timer
-                new CountDownTimer(5000, 1000) {
-
-                    public void onTick(long millisUntilFinished) {
-                        // Put respawn time on the screen
-                        mShotPlayers.add(1, String.valueOf(millisUntilFinished));
-                        updateRecyclerView();
-
-                        // Deactivate shooting button
-                        shootBtn.setEnabled(false);
-                    }
-
-                    // End of timer
-                    public void onFinish() {
-                        // Clean screen
-                        mShotPlayers.clear();
-                        updateRecyclerView();
-
-                        // Reactivate shooting button
-                        shootBtn.setEnabled(true);
-                    }
-                }.start();
-            }
-        }
 
         // TODO See if it's gameover (check if there's a high score, like 20, in some player of the database)
     }
@@ -181,7 +163,7 @@ public class MainActivity extends AppCompatActivity {
 
         name = getIntent().getStringExtra("Username");
         id = getIntent().getIntExtra("ID", -1);
-        final DatabaseReference mCurPlayerRef = database.getReference("players/" + name + id + "/dead");
+        mCurPlayerRef = database.getReference("players/" + name + id + "/dead");
 
         mCurrentCoordinates3D = new ThreeDCharact();
         mCurrentOrientation3D = new ThreeDCharact();
@@ -204,12 +186,6 @@ public class MainActivity extends AppCompatActivity {
         initRecyclerView();
 
         shootBtn = findViewById(R.id.shootBtn);
-//        shootBtn.setOnClickListener(new View.OnClickListener() {
-//            public void onClick(View v) {
-//                // Code here executes on main thread after user presses button
-//                Toast.makeText(MainActivity.this, "Fire in the hole!", Toast.LENGTH_SHORT).show();
-//            }
-//        });
 
         shootBtn.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -220,7 +196,7 @@ public class MainActivity extends AppCompatActivity {
                 tmpmCurrentOrientation = mCurrentOrientation;
 
                 // Retrieve all the current player status one single time
-                mPlayersReference.addListenerForSingleValueEvent(new ValueEventListener() {
+                mPlayersReference.addListenerForSingleValueEvent(shootListener = new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot dataSnapshot) {
                         Log.d(TAG, "onDataChange: Retrieving players' info...");
@@ -237,7 +213,7 @@ public class MainActivity extends AppCompatActivity {
 
                         Log.d(TAG, "onClick: list_players before dead removal: " + list_players);
                         for(int i = 0; i < list_players.size(); i++){
-                            Log.d(TAG, "onClick: Seeing if player " + list_players.get(i).getName() + "is dead...");
+                            Log.d(TAG, "onClick: Seeing if player " + list_players.get(i).getName() + " is dead...");
                             if(list_players.get(i).isDead()){
                                 Log.d(TAG, "onClick: Removing dead player " + list_players.get(i).getName());
                                 list_players.remove(i);
@@ -248,7 +224,12 @@ public class MainActivity extends AppCompatActivity {
                         }
 
                         for(int i = 0; i < list_players.size(); i++){
-                            Log.d(TAG, "onClick: Seeing if player " + list_players.get(i).getName() + "is shot...");
+                            // Skip current player
+                            if(list_players.get(i).getName().equals(name) && list_players.get(i).getId() == id){
+                                continue;
+                            }
+
+                            Log.d(TAG, "onClick: Seeing if player " + list_players.get(i).getName() + " is shot...");
                             if(isShot(tmpmCurrentOrientation[1],
                                       tmpmCurrentLocation.getLatitude(),
                                       tmpmCurrentLocation.getLongitude(),
@@ -272,7 +253,26 @@ public class MainActivity extends AppCompatActivity {
                         }
 
                         Log.d(TAG, "onClick: mShotPlayers = " + mShotPlayers);
+
+                        // Change message background color to green
+                        recyclerView.setBackgroundColor(Color.parseColor("#507CFC00"));
+
                         updateRecyclerView();
+
+                        // Start timer of 1 second
+                        new CountDownTimer(1000, 1000) {
+
+                            public void onTick(long millisUntilFinished) {
+
+                            }
+
+                            // End of timer
+                            public void onFinish() {
+                                // Clean screen
+                                mShotPlayers.clear();
+                                recyclerView.setVisibility(View.INVISIBLE);
+                            }
+                        }.start();
                     }
 
                     @Override
@@ -283,21 +283,53 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-//        createPlayer(123, 6, "Gelson", database);
-//        createPlayer(314, 21, "Dost", database);
-//        createPlayer(165, 2, "Patricio", database);
-//        createPlayer(794, 0, "Wendel", database);
-//        createPlayer(275, 8, "Montero", database);
-
         // Check if player was killed by someone
-        mCurPlayerRef.addValueEventListener(new ValueEventListener() {
+        mCurPlayerRef.addValueEventListener(deathListener = new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 isDead = dataSnapshot.getValue(Boolean.class);
-                Log.d(TAG, "onDataChange: Changed dead status to " + isDead);
-                mShotPlayers.clear();
-                mShotPlayers.add("You're dead :(");
-                updateRecyclerView();
+                Log.d(TAG, "onDataChange: Current dead status is " + isDead);
+
+                if(isDead){
+                    mShotPlayers.clear();
+                    mShotPlayers.add("You're dead :(");
+                    mShotPlayers.add("");
+
+                    // Deactivate shooting button
+                    shootBtn.setEnabled(false);
+
+                    // Change message background color to red
+                    recyclerView.setBackgroundColor(Color.parseColor("#50b71503"));
+
+                    // Start timer of 5 seconds
+                    new CountDownTimer(5000, 1000) {
+
+                        public void onTick(long millisUntilFinished) {
+                            int secondsLeft = (int) Math.ceil(millisUntilFinished / 1000);
+
+                            // Put respawn time on the screen
+                            mShotPlayers.set(1, String.valueOf(secondsLeft));
+                            updateRecyclerView();
+                            Log.d(TAG, "onTick: Respawn time = " + millisUntilFinished + " s");
+                        }
+
+                        // End of timer
+                        public void onFinish() {
+                            // Clean screen
+                            mShotPlayers.clear();
+                            recyclerView.setVisibility(View.INVISIBLE);
+
+                            // Reactivate shooting button
+                            shootBtn.setEnabled(true);
+
+                            // Send info to database that the player is not dead anymore
+                            isDead = false;
+                            mCurPlayerRef.setValue(isDead);
+
+                            Log.d(TAG, "onFinish: Player has respawned.");
+                        }
+                    }.start();
+                }
             }
 
             @Override
@@ -306,27 +338,34 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Order players by their score
-        Query scoreQuery = mPlayersReference.orderByChild("score");
+        // Get top scored player
+        scoreQuery = mPlayersReference.orderByChild("score").limitToLast(1);
 
         // Check for current top score
-        scoreQuery.addValueEventListener(new ValueEventListener() {
+        scoreQuery.addValueEventListener(scoreListener = new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 topScoredPlayers = dataSnapshot.getChildren();
 
                 for(DataSnapshot playerSnapshot: dataSnapshot.getChildren()) {
-                   topScore = playerSnapshot.child("score").getValue(Integer.class);
+                    topScore = playerSnapshot.child("score").getValue(Integer.class);
+                    Log.d(TAG, "onDataChange: Current top score: " + topScore);
 
-                   // Check for gameover (score reached the maximum value)
-                   if(topScore >= maxScore){
-                       Toast.makeText(context, "GAMEOVER: " +
-                               playerSnapshot.child("name").getValue(String.class) +
-                               " won the game", Toast.LENGTH_LONG).show();
-                   }
+                    Player player = playerSnapshot.getValue(Player.class);
+                    Log.d(TAG, "onDataChange: Top scored player: " + player.getName());
 
-                   // Only the top score matters
-                   break;
+                    // Check for gameover (score reached the maximum value)
+                    if(topScore >= maxScore){
+                        Toast.makeText(context, "GAMEOVER: " +
+                                       playerSnapshot.child("name").getValue(String.class) +
+                                       " won the game", Toast.LENGTH_LONG).show();
+
+                        detachListeners();
+                        openGameOverActivity();
+                    }
+
+                    // Only the top score matters
+                    break;
                 }
             }
 
@@ -337,18 +376,13 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // Create and upload a player to the Firebase Realtime Database
-    private void createPlayer(int id, String name, FirebaseDatabase database) {
-        Player p1 = new Player(id, name);
-        DatabaseReference myRef = database.getReference("players/" + name + id);
-        myRef.setValue(p1);
-    }
-
     private boolean runtime_permissions() {
         if(Build.VERSION.SDK_INT >= 23 && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED){
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
 
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_GPS);
+            requestPermissions(new String[]{Manifest.permission.CAMERA}, REQUEST_GPS);
 
             return true;
         }
@@ -379,6 +413,20 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
+            // TODO Camera permissions
+            case REQUEST_CAMERA: {
+//                private Camera mCamera;
+//                private CameraPreview mPreview;
+//
+//                // Create an instance of Camera
+//                mCamera = getCameraInstance();
+//
+//                // Create our Preview view and set it as the content of our activity.
+//                mPreview = new CameraPreview(this, mCamera);
+//                FrameLayout preview = (FrameLayout) findViewById(R.id.camera_preview);
+//                preview.addView(mPreview);
+            }
+
             // other 'case' lines to check for other
             // permissions this app might request.
         }
@@ -396,6 +444,7 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "updateRecyclerView: updating recyclerview.");
         RecyclerViewAdapter adapter = new RecyclerViewAdapter(this, mShotPlayers);
         recyclerView.setAdapter(adapter);
+        recyclerView.setVisibility(View.VISIBLE);
     }
 
 //    // Complex version to calculate distance
@@ -501,39 +550,42 @@ public class MainActivity extends AppCompatActivity {
         // Angle error threshold
         double ang_thr = Math.PI / 180;
 
+        // Adjust azimuth
+        double adj_azimuth = -azimuth;
+
         // Same signal, no discontinuities in the angles
-        if(Math.signum(azimuth) == Math.signum(brng)){
-            if(Math.abs(azimuth - brng) < ang_thr){
+        if(Math.signum(adj_azimuth) == Math.signum(brng)){
+            if(Math.abs(adj_azimuth - brng) < ang_thr){
                 return true;
             }
         }
         // Different signal, see if the angles are near PI, where a discontinuity resides
-        else if(Math.signum(azimuth) > 0){
-            if(Math.abs(azimuth - Math.PI) < Math.abs(azimuth) ||
+        else if(Math.signum(adj_azimuth) > 0){
+            if(Math.abs(adj_azimuth - Math.PI) < Math.abs(adj_azimuth) ||
                     Math.abs(brng - (-Math.PI)) < Math.abs(brng)){
                 // Force both angles to have the same sign by inverting the sign of brng
-                if(Math.abs(azimuth - (2 * Math.PI + brng)) < ang_thr){
+                if(Math.abs(adj_azimuth - (2 * Math.PI + brng)) < ang_thr){
                     return true;
                 }
             }
             // Different signal but both are close to 0 rads, where there isn't a discontinuity
             else{
-                if(Math.abs(azimuth - brng) < ang_thr){
+                if(Math.abs(adj_azimuth - brng) < ang_thr){
                     return true;
                 }
             }
         }
-        else if(Math.signum(azimuth) < 0){
-            if(Math.abs(azimuth - (-Math.PI)) < Math.abs(azimuth) ||
+        else if(Math.signum(adj_azimuth) < 0){
+            if(Math.abs(adj_azimuth - (-Math.PI)) < Math.abs(adj_azimuth) ||
                     Math.abs(brng - Math.PI) < Math.abs(brng)){
-                // Force both angles to have the same sign by inverting the sign of azimuth
-                if(Math.abs((2 * Math.PI + azimuth) - brng) < ang_thr){
+                // Force both angles to have the same sign by inverting the sign of adj_azimuth
+                if(Math.abs((2 * Math.PI + adj_azimuth) - brng) < ang_thr){
                     return true;
                 }
             }
             // Different signal but both are close to 0 rads, where there isn't a discontinuity
             else{
-                if(Math.abs(azimuth - brng) < ang_thr){
+                if(Math.abs(adj_azimuth - brng) < ang_thr){
                     return true;
                 }
             }
@@ -541,5 +593,32 @@ public class MainActivity extends AppCompatActivity {
 
         // No angle compatibility found, then the player isn't in shooting range
         return false;
+    }
+
+    public void openGameOverActivity() {
+        Log.d(TAG, "openLoginActivity: Opening Login Activity...");
+        Intent intent = new Intent(this, GameOverActivity.class);
+        startActivity(intent);
+    }
+
+    private void detachListeners() {
+        try{
+            mPlayersReference.removeEventListener(shootListener);
+        }
+        finally {
+
+        }
+        try{
+            mCurPlayerRef.removeEventListener(deathListener);
+        }
+        finally {
+
+        }
+        try{
+            scoreQuery.removeEventListener(scoreListener);
+        }
+        finally {
+
+        }
     }
 }
