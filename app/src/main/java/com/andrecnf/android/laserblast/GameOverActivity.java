@@ -47,14 +47,16 @@ public class GameOverActivity extends AppCompatActivity {
                     Player player = playerSnapshot.getValue(Player.class);
                     mTopPlayers.add(player.getName() + " " + player.getScore());
 
-                    Log.d(TAG, "onCreate: List before reverse: " + mTopPlayers);
-                    // Get players sorted in descending order, according to their score
-                    Collections.reverse(mTopPlayers);
-                    Log.d(TAG, "onCreate: List after reverse: " + mTopPlayers);
-
-                    // Display top score list
-                    initRecyclerView();
+                    Log.d(TAG, "onCreate: Building list before reverse: " + mTopPlayers);
                 }
+
+                Log.d(TAG, "onCreate: List before reverse: " + mTopPlayers);
+                // Get players sorted in descending order, according to their score
+                Collections.reverse(mTopPlayers);
+                Log.d(TAG, "onCreate: List after reverse: " + mTopPlayers);
+
+                // Display top score list
+                initRecyclerView();
             }
 
             @Override
