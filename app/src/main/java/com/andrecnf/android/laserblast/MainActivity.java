@@ -293,6 +293,7 @@ public class MainActivity extends AppCompatActivity {
                                             CurScore += 1;
                                             Log.d(TAG, "onDataChange: New CurScore = " + CurScore);
                                             ScoreText.setText(String.valueOf(CurScore));
+                                            playerScore.setValue(CurScore);
                                         }
                                         catch(NullPointerException e){
                                             ScoreText.setText("Problems getting the score");
@@ -578,10 +579,10 @@ public class MainActivity extends AppCompatActivity {
         double dist = calculateDistance(lat1, lon1, lat2, lon2);
 
         // Correct azimuth for horizontal handling of the smartphone
-        double correctedAzimuth = azimuth - (Math.PI/2);
+        double correctedAzimuth = azimuth + (Math.PI/2);
 
-        if(correctedAzimuth < -Math.PI){
-            correctedAzimuth = correctedAzimuth + 2 * Math.PI;
+        if(correctedAzimuth > Math.PI){
+            correctedAzimuth = correctedAzimuth - 2 * Math.PI;
         }
 
         // If the distance between the players is bigger than 30 meters, the other player isn't shot
@@ -624,10 +625,11 @@ public class MainActivity extends AppCompatActivity {
         // Adjust azimuth
         double adj_azimuth = -azimuth;
 
-        DebugText.setText("Azimuth: " + adj_azimuth * 180 / Math.PI + "; Bearing: " + brng * 180 / Math.PI);
-
         // Same signal, no discontinuities in the angles
         if(Math.signum(adj_azimuth) == Math.signum(brng)){
+            DebugText.setText("Azimuth: " + adj_azimuth * 180 / Math.PI + "; Bearing: " + brng * 180 / Math.PI +
+                    "\n Difference: " + Math.abs(adj_azimuth - brng) * 180 / Math.PI);
+
             if(Math.abs(adj_azimuth - brng) < ang_thr){
                 return true;
             }
@@ -636,6 +638,10 @@ public class MainActivity extends AppCompatActivity {
         else if(Math.signum(adj_azimuth) > 0){
             if(Math.abs(adj_azimuth - Math.PI) < Math.abs(adj_azimuth) ||
                     Math.abs(brng - (-Math.PI)) < Math.abs(brng)){
+
+                DebugText.setText("Azimuth: " + adj_azimuth * 180 / Math.PI + "; Bearing: " + brng * 180 / Math.PI +
+                        "\n Difference: " + Math.abs(adj_azimuth - (2 * Math.PI + brng)) * 180 / Math.PI);
+
                 // Force both angles to have the same sign by inverting the sign of brng
                 if(Math.abs(adj_azimuth - (2 * Math.PI + brng)) < ang_thr){
                     return true;
@@ -643,6 +649,9 @@ public class MainActivity extends AppCompatActivity {
             }
             // Different signal but both are close to 0 rads, where there isn't a discontinuity
             else{
+                DebugText.setText("Azimuth: " + adj_azimuth * 180 / Math.PI + "; Bearing: " + brng * 180 / Math.PI +
+                        "\n Difference: " + Math.abs(adj_azimuth - brng) * 180 / Math.PI);
+
                 if(Math.abs(adj_azimuth - brng) < ang_thr){
                     return true;
                 }
@@ -651,6 +660,10 @@ public class MainActivity extends AppCompatActivity {
         else if(Math.signum(adj_azimuth) < 0){
             if(Math.abs(adj_azimuth - (-Math.PI)) < Math.abs(adj_azimuth) ||
                     Math.abs(brng - Math.PI) < Math.abs(brng)){
+
+                DebugText.setText("Azimuth: " + adj_azimuth * 180 / Math.PI + "; Bearing: " + brng * 180 / Math.PI +
+                        "\n Difference: " + Math.abs((2 * Math.PI + adj_azimuth) - brng) * 180 / Math.PI);
+
                 // Force both angles to have the same sign by inverting the sign of adj_azimuth
                 if(Math.abs((2 * Math.PI + adj_azimuth) - brng) < ang_thr){
                     return true;
@@ -658,6 +671,9 @@ public class MainActivity extends AppCompatActivity {
             }
             // Different signal but both are close to 0 rads, where there isn't a discontinuity
             else{
+                DebugText.setText("Azimuth: " + adj_azimuth * 180 / Math.PI + "; Bearing: " + brng * 180 / Math.PI +
+                        "\n Difference: " + Math.abs(adj_azimuth - brng) * 180 / Math.PI);
+
                 if(Math.abs(adj_azimuth - brng) < ang_thr){
                     return true;
                 }
