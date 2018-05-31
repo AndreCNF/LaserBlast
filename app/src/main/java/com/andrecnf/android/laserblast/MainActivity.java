@@ -269,6 +269,8 @@ public class MainActivity extends AppCompatActivity {
                                 continue;
                             }
 
+                            // TODO Skip players that are signed out
+
                             Log.d(TAG, "onClick: Seeing if player " + list_players.get(i).getName() + " is shot...");
                             if(isShot(tmpmCurrentOrientation[0],
                                       tmpmCurrentLocation.getLatitude(),
