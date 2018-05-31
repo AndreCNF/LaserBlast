@@ -138,8 +138,6 @@ public class MainActivity extends AppCompatActivity {
             };
         }
         registerReceiver(broadcastReceiverSensor, new IntentFilter("sensors_update"));
-
-        // TODO See if it's gameover (check if there's a high score, like 20, in some player of the database)
     }
 
     @Override
@@ -153,6 +151,8 @@ public class MainActivity extends AppCompatActivity {
         if(broadcastReceiverSensor != null){
             unregisterReceiver(broadcastReceiverSensor);
         }
+
+        // TODO Sign out the current player using Firebase Authentication
     }
 
     @SuppressLint("MissingPermission")
@@ -178,7 +178,6 @@ public class MainActivity extends AppCompatActivity {
         id = getIntent().getIntExtra("ID", -1);
         mCurPlayerRef = database.getReference("players/" + name + id + "/dead");
 
-        // TODO Fix score fetch
         final DatabaseReference playerScore = database.getReference("players/" + name + id + "/score");
         Log.d(TAG, "onCreate: playerScore = " + playerScore);
 

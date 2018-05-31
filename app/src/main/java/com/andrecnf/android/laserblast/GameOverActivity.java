@@ -77,6 +77,9 @@ public class GameOverActivity extends AppCompatActivity {
     public void openLoginActivity() {
         Log.d(TAG, "openLoginActivity: Opening Login Activity...");
         Intent intent = new Intent(this, LoginActivity.class);
+
+        // TODO Reset all scores to 0
+
         startActivity(intent);
     }
 
