@@ -7,13 +7,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.graphics.Camera;
 import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.CountDownTimer;
-import android.os.Debug;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -25,7 +23,6 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -36,7 +33,6 @@ import com.google.firebase.database.ValueEventListener;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -276,7 +272,7 @@ public class MainActivity extends AppCompatActivity {
                             }
 
                             // Skip players that are signed out
-                            if(list_players.get(i).getIsLoggedIn()){
+                            if(list_players.get(i).getIsLoggedIn() == false){
                                 continue;
                             }
 
@@ -509,14 +505,14 @@ public class MainActivity extends AppCompatActivity {
     private void initRecyclerView(){
         Log.d(TAG, "initRecyclerView: init recyclerview.");
         recyclerView = findViewById(R.id.recycler_view);
-        RecyclerViewAdapter adapter = new RecyclerViewAdapter(this, mShotPlayers);
+        RecyclerViewAdapter adapter = new RecyclerViewAdapter(this, mShotPlayers, R.layout.layout_listitem_black);
         recyclerView.setAdapter(adapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
     }
 
     private void updateRecyclerView(){
         Log.d(TAG, "updateRecyclerView: updating recyclerview.");
-        RecyclerViewAdapter adapter = new RecyclerViewAdapter(this, mShotPlayers);
+        RecyclerViewAdapter adapter = new RecyclerViewAdapter(this, mShotPlayers, R.layout.layout_listitem_black);
         recyclerView.setAdapter(adapter);
         recyclerView.setVisibility(View.VISIBLE);
     }
@@ -601,14 +597,6 @@ public class MainActivity extends AppCompatActivity {
             return false;
         }
 
-        // Rounded coordinates to allow a wider shooting area, compensating GPS and compass
-        // precision errors
-//        double lat1rnd = roundFourDecimals(lat1);
-//        double lat2rnd = roundFourDecimals(lat2);
-//        double lon1rnd = roundFourDecimals(lon1);
-//        double lon2rnd = roundFourDecimals(lon2);
-
-//        double brng = calculateBearing(lat1rnd, lon1rnd, lat2rnd, lon2rnd);
         double brng = calculateBearing(lat1, lon1, lat2, lon2);
 
         // The other player is shot only if it's in the direction of the shooting player's orientation

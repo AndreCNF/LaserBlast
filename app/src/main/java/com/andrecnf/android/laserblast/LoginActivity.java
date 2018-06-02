@@ -227,6 +227,7 @@ public class LoginActivity extends AppCompatActivity {
 
                                                         if (player.getName().equals(name_str)) {
                                                             int id_cur = player.getId();
+                                                            database.getReference("players/" + name_str + id_cur + "/isLoggedIn").setValue(true);
                                                             openMainActivity(name_str, id_cur);
                                                         }
                                                     }

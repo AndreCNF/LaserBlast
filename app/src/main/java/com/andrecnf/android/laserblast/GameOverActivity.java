@@ -8,7 +8,6 @@ import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
 
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -19,9 +18,6 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.Collections;
-
-import static com.andrecnf.android.laserblast.MainActivity.maxScore;
-import static com.andrecnf.android.laserblast.MainActivity.topScore;
 
 public class GameOverActivity extends AppCompatActivity {
     private static final String TAG = "GameOverActivity";
@@ -91,7 +87,7 @@ public class GameOverActivity extends AppCompatActivity {
     private void initRecyclerView(){
         Log.d(TAG, "initRecyclerView: init recyclerview.");
         recyclerView = findViewById(R.id.recycler_view);
-        RecyclerViewAdapter adapter = new RecyclerViewAdapter(this, mTopPlayers);
+        RecyclerViewAdapter adapter = new RecyclerViewAdapter(this, mTopPlayers, R.layout.layout_listitem_white);
         recyclerView.setAdapter(adapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
     }

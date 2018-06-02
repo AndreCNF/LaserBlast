@@ -15,7 +15,6 @@ public class Player {
     private boolean isLoggedIn;
     private ThreeDCharact coordinates;
     private ThreeDCharact orientation;
-    private Date timestamp;
 
     /* Constructors */
     public Player(int id_, String name_){
