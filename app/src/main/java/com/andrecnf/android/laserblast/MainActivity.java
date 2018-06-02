@@ -377,6 +377,12 @@ public class MainActivity extends AppCompatActivity {
                         public void onTick(long millisUntilFinished) {
                             int secondsLeft = (int) Math.ceil(millisUntilFinished / 1000);
 
+                            if(mShotPlayers.size() != 2){
+                                mShotPlayers.clear();
+                                mShotPlayers.add("You're dead :(");
+                                mShotPlayers.add("");
+                            }
+
                             // Put respawn time on the screen
                             mShotPlayers.set(1, String.valueOf(secondsLeft));
                             updateRecyclerView();
