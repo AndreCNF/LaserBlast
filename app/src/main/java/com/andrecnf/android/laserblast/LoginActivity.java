@@ -38,7 +38,7 @@ public class LoginActivity extends AppCompatActivity {
     private int flag_DupName = 0;
     final FirebaseDatabase database = FirebaseDatabase.getInstance();
     final DatabaseReference mPlayersReference = database.getReference("players");
-    private FirebaseAuth mAuth;
+    static FirebaseAuth mAuth;
     private Boolean isSignUp = true;
 
     @Override
@@ -264,6 +264,7 @@ public class LoginActivity extends AppCompatActivity {
         Intent intent = new Intent(this, MainActivity.class);
         intent.putExtra("Username", str);
         intent.putExtra("ID", id);
+//        intent.putExtra("Auth", mAuth);
         startActivity(intent);
     }
 

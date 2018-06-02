@@ -10,7 +10,6 @@
         android:layout_height="wrap_content"
         android:text="BrunoAlves"
         android:textSize="20sp"
-        android:textColor="#ffffff"
-        android:background="#50111111"/>
+        android:textColor="#ffffff"/>
 
 </RelativeLayout>

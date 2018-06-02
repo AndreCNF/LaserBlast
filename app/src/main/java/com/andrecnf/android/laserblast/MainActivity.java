@@ -25,6 +25,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -152,7 +153,11 @@ public class MainActivity extends AppCompatActivity {
             unregisterReceiver(broadcastReceiverSensor);
         }
 
-        // TODO Sign out the current player using Firebase Authentication
+        DatabaseReference mLoggedInRef = database.getReference("players/" + name + id + "/isLoggedIn");
+
+        // Sign out the current player
+        LoginActivity.mAuth.signOut();
+        mLoggedInRef.setValue(false);
     }
 
     @SuppressLint("MissingPermission")
@@ -174,6 +179,7 @@ public class MainActivity extends AppCompatActivity {
             startService(i);
         }
 
+        // Get the current player's name and ID from the LoginActivity
         name = getIntent().getStringExtra("Username");
         id = getIntent().getIntExtra("ID", -1);
         mCurPlayerRef = database.getReference("players/" + name + id + "/dead");
@@ -269,7 +275,10 @@ public class MainActivity extends AppCompatActivity {
                                 continue;
                             }
 
-                            // TODO Skip players that are signed out
+                            // Skip players that are signed out
+                            if(list_players.get(i).getIsLoggedIn()){
+                                continue;
+                            }
 
                             Log.d(TAG, "onClick: Seeing if player " + list_players.get(i).getName() + " is shot...");
                             if(isShot(tmpmCurrentOrientation[0],
@@ -688,6 +697,8 @@ public class MainActivity extends AppCompatActivity {
     public void openGameOverActivity() {
         Log.d(TAG, "openLoginActivity: Opening Login Activity...");
         Intent intent = new Intent(this, GameOverActivity.class);
+        intent.putExtra("Username", name);
+        intent.putExtra("ID", id);
         startActivity(intent);
     }
 

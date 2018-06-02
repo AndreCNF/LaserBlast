@@ -30,6 +30,8 @@ public class GameOverActivity extends AppCompatActivity {
     private final FirebaseDatabase database = FirebaseDatabase.getInstance();
     private final DatabaseReference mPlayersReference = database.getReference("players");
     private RecyclerView recyclerView;
+    private String name;
+    private int id;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +50,9 @@ public class GameOverActivity extends AppCompatActivity {
                     mTopPlayers.add(player.getName() + " " + player.getScore());
 
                     Log.d(TAG, "onCreate: Building list before reverse: " + mTopPlayers);
+
+                    // Reset each player's score to 0
+                    database.getReference("players/" + player.getName() + player.getId() + "/score").setValue(0);
                 }
 
                 Log.d(TAG, "onCreate: List before reverse: " + mTopPlayers);
@@ -90,4 +95,20 @@ public class GameOverActivity extends AppCompatActivity {
         recyclerView.setAdapter(adapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
     }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        // Get the current player's name and ID from the MainActivity
+        name = getIntent().getStringExtra("Username");
+        id = getIntent().getIntExtra("ID", -1);
+
+        DatabaseReference mLoggedInRef = database.getReference("players/" + name + id + "/isLoggedIn");
+
+        // Sign out the current player
+        LoginActivity.mAuth.signOut();
+        mLoggedInRef.setValue(false);
+    }
+
 }
