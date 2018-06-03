@@ -23,6 +23,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -59,7 +60,7 @@ public class MainActivity extends AppCompatActivity {
     private DatabaseReference mCurPlayerRef;
     private Query scoreQuery;
     private String name;
-    private int id;
+    private String id;
     private ThreeDCharact mCurrentCoordinates3D;
     private ThreeDCharact mCurrentOrientation3D;
     private boolean isDead = false;
@@ -85,6 +86,9 @@ public class MainActivity extends AppCompatActivity {
     ValueEventListener scoreListener;
     ValueEventListener curScoreListener;
 
+    // Current user
+    private FirebaseUser user;
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -106,8 +110,8 @@ public class MainActivity extends AppCompatActivity {
                         mCurrentOrientation3D.setX(mCurrentOrientation[0]);
                         mCurrentOrientation3D.setY(mCurrentOrientation[1]);
                         mCurrentOrientation3D.setZ(mCurrentOrientation[2]);
-                        database.getReference("players/" + name + id + "/coordinates").setValue(mCurrentCoordinates3D);
-                        database.getReference("players/" + name + id + "/orientation").setValue(mCurrentOrientation3D);
+                        database.getReference("players/" + id + "/coordinates").setValue(mCurrentCoordinates3D);
+                        database.getReference("players/" + id + "/orientation").setValue(mCurrentOrientation3D);
                     } finally{
 
                     }
@@ -149,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
             unregisterReceiver(broadcastReceiverSensor);
         }
 
-        DatabaseReference mLoggedInRef = database.getReference("players/" + name + id + "/isLoggedIn");
+        DatabaseReference mLoggedInRef = database.getReference("players/" + id + "/isLoggedIn");
 
         // Sign out the current player
         LoginActivity.mAuth.signOut();
@@ -176,11 +180,12 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // Get the current player's name and ID from the LoginActivity
+        user = LoginActivity.mAuth.getCurrentUser();
         name = getIntent().getStringExtra("Username");
-        id = getIntent().getIntExtra("ID", -1);
-        mCurPlayerRef = database.getReference("players/" + name + id + "/dead");
+        id = user.getUid();
+        mCurPlayerRef = database.getReference("players/" + id + "/dead");
 
-        final DatabaseReference playerScore = database.getReference("players/" + name + id + "/score");
+        final DatabaseReference playerScore = database.getReference("players/" + id + "/score");
         Log.d(TAG, "onCreate: playerScore = " + playerScore);
 
         playerScore.addListenerForSingleValueEvent(curScoreListener = new ValueEventListener() {
@@ -286,8 +291,7 @@ public class MainActivity extends AppCompatActivity {
 
                                 // Kill player
                                 DatabaseReference shotPlayerDead = database.getReference(
-                                        "players/" + list_players.get(i).getName()
-                                                      + list_players.get(i).getId() + "/dead");
+                                        "players/" + list_players.get(i).getId() + "/dead");
                                 shotPlayerDead.setValue(true);
 
                                 playerScore.addListenerForSingleValueEvent(curScoreListener = new ValueEventListener() {

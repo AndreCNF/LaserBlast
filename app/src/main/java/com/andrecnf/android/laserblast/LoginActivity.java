@@ -46,8 +46,6 @@ public class LoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        Random rand = new Random();
-        final int id = rand.nextInt(100) + 1;
         mAuth = FirebaseAuth.getInstance();
 
         final EditText name = (EditText) findViewById(R.id.TFusername);
@@ -127,46 +125,50 @@ public class LoginActivity extends AppCompatActivity {
                     if(isSignUp) {
                         // Creating new account (sign up)
 
-                        // Retrieve all the current player status one single time
-                        mPlayersReference.addListenerForSingleValueEvent(new ValueEventListener() {
-                            @Override
-                            public void onDataChange(DataSnapshot dataSnapshot) {
-                                Log.d(TAG, "onDataChange: Retrieving players' info...");
-                                if(list_players.size() > 0)
-                                    list_players.clear();
-                                for(DataSnapshot postSnapshot:dataSnapshot.getChildren()){
-                                    Player player = postSnapshot.getValue(Player.class);
-                                    list_players.add(player);
-                                    Log.d(TAG, "onDataChange: Adding player " + player.getName() + " to the list...");
-                                }
+                        mAuth.createUserWithEmailAndPassword(email_str, password_str)
+                                .addOnCompleteListener(LoginActivity.this, new OnCompleteListener<AuthResult>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<AuthResult> task) {
+                                        if (task.isSuccessful()) {
+                                            // Sign in success, update UI with the signed-in user's information
+                                            Log.d(TAG, "createUserWithEmail:success");
+                                            Log.d(TAG, "Username: " + name_str + "; e-mail: "
+                                                    + email_str + "; password: " + password_str);
 
-                                Log.d(TAG, "Username: " + name_str + "; e-mail: "
-                                        + email_str + "; password: " + password_str);
+                                            final FirebaseUser user = mAuth.getCurrentUser();
 
-                                // if the username has already been chosen ask for another username
-                                for(int i = 0; i < list_players.size(); i++){
-                                    Log.d(TAG, "onDataChange: Current player: " + list_players.get(i).getName());
-                                    if(name_str.equals(list_players.get(i).getName())){
-                                        Toast.makeText(LoginActivity.this, "Sorry, that username is already taken. Please choose another one", Toast.LENGTH_SHORT).show();
-                                        flag_DupName = 1;
-                                    }
-                                }
+                                            // Get the user's unique ID from Firebase
+                                            final String UID = user.getUid();
 
-                                if(flag_DupName == 0){
-                                    Log.d(TAG, "onClick: No duplicate names found");
+                                            createPlayer(UID, name_str, database);
 
-                                    mAuth.createUserWithEmailAndPassword(email_str, password_str)
-                                            .addOnCompleteListener(LoginActivity.this, new OnCompleteListener<AuthResult>() {
+                                            // Retrieve all the current player status one single time
+                                            mPlayersReference.addListenerForSingleValueEvent(new ValueEventListener() {
                                                 @Override
-                                                public void onComplete(@NonNull Task<AuthResult> task) {
-                                                    if (task.isSuccessful()) {
-                                                        // Sign in success, update UI with the signed-in user's information
-                                                        Log.d(TAG, "createUserWithEmail:success");
-                                                        Log.d(TAG, "Username: " + name_str + "; e-mail: "
-                                                                + email_str + "; password: " + password_str);
+                                                public void onDataChange(DataSnapshot dataSnapshot) {
+                                                    Log.d(TAG, "onDataChange: Retrieving players' info...");
+                                                    if(list_players.size() > 0)
+                                                        list_players.clear();
+                                                    for(DataSnapshot postSnapshot:dataSnapshot.getChildren()){
+                                                        Player player = postSnapshot.getValue(Player.class);
+                                                        list_players.add(player);
+                                                        Log.d(TAG, "onDataChange: Adding player " + player.getName() + " to the list...");
+                                                    }
 
-                                                        FirebaseUser user = mAuth.getCurrentUser();
-                                                        createPlayer(id, name_str, database);
+                                                    Log.d(TAG, "Username: " + name_str + "; e-mail: "
+                                                            + email_str + "; password: " + password_str);
+
+                                                    // if the username has already been chosen ask for another username
+                                                    for(int i = 0; i < list_players.size(); i++){
+                                                        Log.d(TAG, "onDataChange: Current player: " + list_players.get(i).getName());
+                                                        if(name_str.equals(list_players.get(i).getName()) && !UID.equals(list_players.get(i).getId())){
+                                                            Toast.makeText(LoginActivity.this, "Sorry, that username is already taken. Please choose another one", Toast.LENGTH_SHORT).show();
+                                                            flag_DupName = 1;
+                                                        }
+                                                    }
+
+                                                    if(flag_DupName == 0) {
+                                                        database.getReference("players/" + UID).setValue(null);
 
                                                         // Send verification e-mail
                                                         user.sendEmailVerification()
@@ -179,27 +181,30 @@ public class LoginActivity extends AppCompatActivity {
                                                                     }
                                                                 });
 
-                                                        openMainActivity(name_str, id);
-                                                    } else {
-                                                        // If sign in fails, display a message to the user.
-                                                        Log.w(TAG, "createUserWithEmail:failure", task.getException());
-                                                        Toast.makeText(LoginActivity.this, "Sign up authentication failed.",
-                                                                Toast.LENGTH_SHORT).show();
+                                                        openMainActivity(UID);
+                                                    }
+
+                                                    else{
+                                                        Log.d(TAG, "onClick: Duplicate name found, try again");
+                                                        flag_DupName = 0;
+                                                        user.delete();
                                                     }
                                                 }
+
+                                                @Override
+                                                public void onCancelled(DatabaseError databaseError) {
+
+                                                }
                                             });
-                                }
-                                else{
-                                    Log.d(TAG, "onClick: Duplicate name found, try again");
-                                    flag_DupName = 0;
-                                }
-                            }
 
-                            @Override
-                            public void onCancelled(DatabaseError databaseError) {
-
-                            }
-                        });
+                                        } else {
+                                            // If sign in fails, display a message to the user.
+                                            Log.w(TAG, "createUserWithEmail:failure", task.getException());
+                                            Toast.makeText(LoginActivity.this, "Sign up authentication failed.",
+                                                    Toast.LENGTH_SHORT).show();
+                                        }
+                                    }
+                                });
                     }
 
                     else {
@@ -217,27 +222,14 @@ public class LoginActivity extends AppCompatActivity {
                                             Log.d(TAG, "signInWithEmail:success");
                                             FirebaseUser user = mAuth.getCurrentUser();
 
-                                            // Retrieve all the current player status one single time
-                                            mPlayersReference.addListenerForSingleValueEvent(new ValueEventListener() {
-                                                @Override
-                                                public void onDataChange(DataSnapshot dataSnapshot) {
-                                                    Log.d(TAG, "onDataChange: Retrieving players' info...");
-                                                    for (DataSnapshot postSnapshot : dataSnapshot.getChildren()) {
-                                                        Player player = postSnapshot.getValue(Player.class);
+                                            // Get the user's unique ID from Firebase
+                                            final String UID = user.getUid();
 
-                                                        if (player.getName().equals(name_str)) {
-                                                            int id_cur = player.getId();
-                                                            database.getReference("players/" + name_str + id_cur + "/isLoggedIn").setValue(true);
-                                                            openMainActivity(name_str, id_cur);
-                                                        }
-                                                    }
-                                                }
+                                            // TODO Use mAuth.getUid() instead of generating a random ID
 
-                                                @Override
-                                                public void onCancelled (DatabaseError databaseError){
+                                            database.getReference("players/" + UID + "/isLoggedIn").setValue(true);
+                                            openMainActivity(UID);
 
-                                                }
-                                            });
                                         } else {
                                             // If sign in fails, display a message to the user.
                                             Log.w(TAG, "signInWithEmail:failure", task.getException());
@@ -260,20 +252,21 @@ public class LoginActivity extends AppCompatActivity {
         FirebaseUser currentUser = mAuth.getCurrentUser();
     }
 
-    public void openMainActivity(String str, int id) {
+    public void openMainActivity(String id) {
         Log.d(TAG, "openMainActivity: Opening Main Activity...");
         Intent intent = new Intent(this, MainActivity.class);
-        intent.putExtra("Username", str);
         intent.putExtra("ID", id);
-//        intent.putExtra("Auth", mAuth);
         startActivity(intent);
     }
 
     // Create and upload a player to the Firebase Realtime Database
-    private void createPlayer(int id, String name, FirebaseDatabase database) {
+    private void createPlayer(String id, String name, FirebaseDatabase database) {
         Player p1 = new Player(id, name);
-        DatabaseReference myRef = database.getReference("players/" + name + id);
+        DatabaseReference firstAddBoolean = database.getReference("FirstAdd");
+        firstAddBoolean.setValue(true);
+        DatabaseReference myRef = database.getReference("players/" + id);
         myRef.setValue(p1);
+        firstAddBoolean.setValue(false);
     }
 
     // Validate e-mail and password format

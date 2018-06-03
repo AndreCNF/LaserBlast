@@ -9,15 +9,15 @@ import java.util.Date;
 public class Player {
 
     /*Fields*/
-    private int id, score;
-    private String name;
+    private int score;
+    private String name, id;
     private boolean isDead;
     private boolean isLoggedIn;
     private ThreeDCharact coordinates;
     private ThreeDCharact orientation;
 
     /* Constructors */
-    public Player(int id_, String name_){
+    public Player(String id_, String name_){
         id = id_;
         name = name_;
         isDead = false;
@@ -29,11 +29,7 @@ public class Player {
     }
 
     public Player(){
-        this(-1, "DummyPlayer");
-    }
-
-    public int getId (){
-        return this.id;
+        this("-1", "DummyPlayer");
     }
 
     public String getName(){
@@ -70,5 +66,9 @@ public class Player {
 
     public boolean getIsLoggedIn(){
         return this.isLoggedIn;
+    }
+
+    public String getId() {
+        return id;
     }
 }
