@@ -164,12 +164,13 @@ public class LoginActivity extends AppCompatActivity {
                                                         if(name_str.equals(list_players.get(i).getName()) && !UID.equals(list_players.get(i).getId())){
                                                             Toast.makeText(LoginActivity.this, "Sorry, that username is already taken. Please choose another one", Toast.LENGTH_SHORT).show();
                                                             flag_DupName = 1;
+
+                                                            // Delete the created player if a duplicate name was found
+                                                            database.getReference("players/" + UID).setValue(null);
                                                         }
                                                     }
 
                                                     if(flag_DupName == 0) {
-                                                        database.getReference("players/" + UID).setValue(null);
-
                                                         // Send verification e-mail
                                                         user.sendEmailVerification()
                                                                 .addOnCompleteListener(new OnCompleteListener<Void>() {
@@ -225,9 +226,10 @@ public class LoginActivity extends AppCompatActivity {
                                             // Get the user's unique ID from Firebase
                                             final String UID = user.getUid();
 
-                                            // TODO Use mAuth.getUid() instead of generating a random ID
-
+                                            DatabaseReference firstAddBoolean = database.getReference("FirstAdd");
+                                            firstAddBoolean.setValue(true);
                                             database.getReference("players/" + UID + "/isLoggedIn").setValue(true);
+                                            firstAddBoolean.setValue(false);
                                             openMainActivity(UID);
 
                                         } else {
@@ -255,7 +257,6 @@ public class LoginActivity extends AppCompatActivity {
     public void openMainActivity(String id) {
         Log.d(TAG, "openMainActivity: Opening Main Activity...");
         Intent intent = new Intent(this, MainActivity.class);
-        intent.putExtra("ID", id);
         startActivity(intent);
     }
 

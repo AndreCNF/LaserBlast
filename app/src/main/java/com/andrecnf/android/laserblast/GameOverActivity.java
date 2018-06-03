@@ -48,7 +48,7 @@ public class GameOverActivity extends AppCompatActivity {
                     Log.d(TAG, "onCreate: Building list before reverse: " + mTopPlayers);
 
                     // Reset each player's score to 0
-                    database.getReference("players/" + player.getName() + player.getId() + "/score").setValue(0);
+                    database.getReference("players/" + player.getId() + "/score").setValue(0);
                 }
 
                 Log.d(TAG, "onCreate: List before reverse: " + mTopPlayers);
@@ -58,6 +58,11 @@ public class GameOverActivity extends AppCompatActivity {
 
                 // Display top score list
                 initRecyclerView();
+                DatabaseReference mLoggedInRef = database.getReference("players/" + id + "/isLoggedIn");
+
+                // Sign out the current player
+                LoginActivity.mAuth.signOut();
+                mLoggedInRef.setValue(false);
             }
 
             @Override
@@ -78,9 +83,6 @@ public class GameOverActivity extends AppCompatActivity {
     public void openLoginActivity() {
         Log.d(TAG, "openLoginActivity: Opening Login Activity...");
         Intent intent = new Intent(this, LoginActivity.class);
-
-        // TODO Reset all scores to 0
-
         startActivity(intent);
     }
 

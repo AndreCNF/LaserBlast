@@ -57,7 +57,8 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<String> mShotPlayers = new ArrayList<>();
     private final FirebaseDatabase database = FirebaseDatabase.getInstance();
     private final DatabaseReference mPlayersReference = database.getReference("players");
-    private DatabaseReference mCurPlayerRef;
+    private DatabaseReference mCurPlayerDeadRef;
+    private DatabaseReference mCurPlayerNameRef;
     private Query scoreQuery;
     private String name;
     private String id;
@@ -85,6 +86,7 @@ public class MainActivity extends AppCompatActivity {
     ValueEventListener shootListener;
     ValueEventListener scoreListener;
     ValueEventListener curScoreListener;
+    ValueEventListener nameListener;
 
     // Current user
     private FirebaseUser user;
@@ -145,19 +147,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
 
-        if(broadcastReceiverGPS != null){
-            unregisterReceiver(broadcastReceiverGPS);
-        }
-
-        if(broadcastReceiverSensor != null){
-            unregisterReceiver(broadcastReceiverSensor);
-        }
-
-        DatabaseReference mLoggedInRef = database.getReference("players/" + id + "/isLoggedIn");
-
-        // Sign out the current player
-        LoginActivity.mAuth.signOut();
-        mLoggedInRef.setValue(false);
+        detachListeners();
     }
 
     @SuppressLint("MissingPermission")
@@ -181,9 +171,27 @@ public class MainActivity extends AppCompatActivity {
 
         // Get the current player's name and ID from the LoginActivity
         user = LoginActivity.mAuth.getCurrentUser();
-        name = getIntent().getStringExtra("Username");
         id = user.getUid();
-        mCurPlayerRef = database.getReference("players/" + id + "/dead");
+
+        mCurPlayerNameRef = database.getReference("players/" + id + "/name");
+        mCurPlayerDeadRef = database.getReference("players/" + id + "/dead");
+
+        mCurPlayerNameRef.addListenerForSingleValueEvent(nameListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                try {
+                    name = dataSnapshot.getValue().toString();
+                }
+                catch(NullPointerException e){
+                    ScoreText.setText("Problems getting the player's name");
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                ScoreText.setText("Cancelled");
+            }
+        });
 
         final DatabaseReference playerScore = database.getReference("players/" + id + "/score");
         Log.d(TAG, "onCreate: playerScore = " + playerScore);
@@ -253,21 +261,21 @@ public class MainActivity extends AppCompatActivity {
                         mShotPlayers.clear();
                         mShotPlayers.add("Shot players:");
 
-                        Log.d(TAG, "onClick: list_players before dead removal: " + list_players);
-                        for(int i = 0; i < list_players.size(); i++){
-                            Log.d(TAG, "onClick: Seeing if player " + list_players.get(i).getName() + " is dead...");
-                            if(list_players.get(i).isDead()){
-                                Log.d(TAG, "onClick: Removing dead player " + list_players.get(i).getName());
-                                list_players.remove(i);
-
-                                // As player i was removed, next player has index i again
-                                i--;
-                            }
-                        }
+//                        Log.d(TAG, "onClick: list_players before dead removal: " + list_players);
+//                        for(int i = 0; i < list_players.size(); i++){
+//                            Log.d(TAG, "onClick: Seeing if player " + list_players.get(i).getName() + " is dead...");
+//                            if(list_players.get(i).isDead()){
+//                                Log.d(TAG, "onClick: Removing dead player " + list_players.get(i).getName());
+//                                list_players.remove(i);
+//
+//                                // As player i was removed, next player has index i again
+//                                i--;
+//                            }
+//                        }
 
                         for(int i = 0; i < list_players.size(); i++){
                             // Skip current player
-                            if(list_players.get(i).getName().equals(name) && list_players.get(i).getId() == id){
+                            if(list_players.get(i).getName().equals(name) && list_players.get(i).getId().equals(id)){
                                 continue;
                             }
 
@@ -358,7 +366,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         // Check if player was killed by someone
-        mCurPlayerRef.addValueEventListener(deathListener = new ValueEventListener() {
+        mCurPlayerDeadRef.addValueEventListener(deathListener = new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 isDead = dataSnapshot.getValue(Boolean.class);
@@ -404,7 +412,7 @@ public class MainActivity extends AppCompatActivity {
 
                             // Send info to database that the player is not dead anymore
                             isDead = false;
-                            mCurPlayerRef.setValue(isDead);
+                            mCurPlayerDeadRef.setValue(isDead);
 
                             Log.d(TAG, "onFinish: Player has respawned.");
                         }
@@ -706,11 +714,29 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if(deathListener != null) {
-            mCurPlayerRef.removeEventListener(deathListener);
+            mCurPlayerDeadRef.removeEventListener(deathListener);
         }
 
         if(scoreListener != null) {
             scoreQuery.removeEventListener(scoreListener);
+        }
+
+        try {
+            if (broadcastReceiverGPS != null) {
+                this.unregisterReceiver(broadcastReceiverGPS);
+            }
+        } catch (Exception e) {
+            Log.i("", "broadcastReceiverGPS is already unregistered");
+            broadcastReceiverGPS = null;
+        }
+
+        try {
+            if (broadcastReceiverSensor != null) {
+                this.unregisterReceiver(broadcastReceiverSensor);
+            }
+        } catch (Exception e) {
+            Log.i("", "broadcastReceiverSensor is already unregistered");
+            broadcastReceiverSensor = null;
         }
 
 //        if(curScoreListener != null) {
